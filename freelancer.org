@@ -5,3 +5,34 @@
 ** Rooms
 *** Make and add characters here
 ** Bribes, factions,etc.
+
+* Simulation
+  So, concept of systems gives us lots of leeway to experiment.
+** Big structure
+   SimObjects wrapping arches and god-knows-what would
+   - run their routines and generate events
+   -- cooldowns
+   -- AI
+   -- send/rcv player events (?)
+   - send visible events to their neighbors OR system
+   - receive events from outside (neighbors/system/console/etc)
+   This way we're prioritising our internal simulation instead of player
+   interactions, but the difference should be neglectable.
+*** List of neighbors
+    It is possible to use R-Trees for that.
+    System would receive movement events (sent to system every 300M or so) and
+    add-remove-readd R-Tree nodes to internal spatial DB.
+    Everytime update happens - we detect close neighbors (10K, overridable via
+    scanner range) and send notifications to everyone.
+**** TODO What to send on update
+     Shall we send whole neighbor list or keep track of neighbors and send
+     updates only? I think whole lists for now, that's simpler - but MAYBE we'll
+     send updates later.
+*** Find a way to organically forward events from objects
+    Objects like ships should be able to emit events (like recharge etc)
+*** Don't send messages to stupid objects
+    There's lots of things w/o listeners (nav buoys, solars) that don't need
+    any notifications. However that could be a premature optimization.
+*** Simulate physics for close objects
+    So yeah. We should count distances between bboxes (same rtree?) and run
+    physics simulations between em.
