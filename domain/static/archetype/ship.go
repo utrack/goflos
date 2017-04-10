@@ -18,7 +18,7 @@ const (
 )
 
 type Ship struct {
-	Arch
+	arch
 
 	// CargoHoldSize is this ship's cargo hold size (uh).
 	CargoHoldSize float64

@@ -25,6 +25,9 @@ type Mine struct {
 	LinearDrag     float32
 	SeekerDist     float32
 	TopSpeed       float32
+
+	DmgHull   float32
+	DmgEnergy float32
 }
 
 // Munition is the munition's archetype.

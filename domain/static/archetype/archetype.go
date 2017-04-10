@@ -1,45 +1,62 @@
 package archetype
 
+import "time"
+
 // Arch is the basic archetype data.
-type Arch struct {
-	ArchID   uint64
-	Nickname string
+// It can be anything from this pkg.
+type Arch interface {
+	ID() uint64
+	Nickname() string
+}
+
+// arch is the basic archetype data.
+type arch struct {
+	ArchID       uint64
+	ArchNickname string
+}
+
+func (a arch) ID() uint64 {
+	return a.ArchID
+}
+
+func (a arch) Nickname() string {
+	return a.ArchNickname
 }
 
 // Equipment is the ship's equipment archetype.
 type Equipment struct {
-	Arch
+	arch
 	// Lootable is true if this equipment can be shot out and looted.
 	Lootable bool
 	// UnitsPerContainer is the number of these units per one cargo pod.
 	UnitsPerContainer uint64
 
-	// TODO dunno. src/GameDB/Arch/EquipmentArchetype
-	// maybe weight
+	// Volume is this thing's occupied cargohold volume.
 	Volume float32
 }
 
-// Motor is the motor archetype. TODO missiles only?
-type Motor struct {
-	Arch
+// EquipMotor is the motor archetype. In official game it is used by missiles' engines
+// only.
+type EquipMotor struct {
+	arch
 	Acceleration float32
-	// TODO check this. motor delay used in missiles
-	Delay   float32
+	// Delay is time after which engine starts.
+	Delay   time.Duration
 	AiRange float32
 
-	Lifetime float32
+	Lifetime time.Duration
 }
 
 // EquipArmor is armor archetype.
 type EquipArmor struct {
-	Arch
+	arch
 	// TODO check this. damage multiplier or hitpoints?
 	HitPtsScale float64
 }
 
 // EquipPower is the powerplant archetype.
 type EquipPower struct {
-	Arch
+	arch
 	// Capacity is total energy storage capacity of this powerplant.
 	Capacity float32
 	// ChargeRate is this powerplant's charge rate.
@@ -57,17 +74,17 @@ type EquipPower struct {
 // Projectile is the external projectile's archetype (i.e. mines, CMs, rockets, etc)
 // see archprojectile package.
 type Projectile struct {
-	Arch
+	arch
 
 	// TODO check this
 	//ForceGunOri bool
 
 	// Lifetime is this projectile's lifetime in seconds.
-	Lifetime float32
+	Lifetime time.Duration
 
 	// OwnerSafeTime is a time during which projectile can't explode and
 	// physical contacts are not accounted.
-	OwnerSafeTime float32
+	OwnerSafeTime time.Duration
 
 	RequiresAmmo bool
 }

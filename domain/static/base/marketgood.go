@@ -1,6 +1,8 @@
 /*Package base provides base-related domain structs.*/
 package base
 
+import "github.com/utrack/goflos/domain/static/market"
+
 const (
 	defaultPriceMod     = float32(1)
 	defaultSellPriceMod = float32(0.2)
@@ -10,7 +12,9 @@ const (
 // It contains this good's price and buying limit.
 type MarketGood struct {
 	id uint64
-	// TODO BaseDB.UniGood base good
+
+	Good market.Good
+
 	minLevelToBuy float32
 	minRepToBuy   float32
 
