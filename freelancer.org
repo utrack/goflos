@@ -1,0 +1,7 @@
+* Archetypes
+** Weapon shield mods are unused now, embed with WeaponArchetype?
+*** Should link to projectile as well, since we'll register hits from proj
+* Bases
+** Rooms
+*** Make and add characters here
+** Bribes, factions,etc.
