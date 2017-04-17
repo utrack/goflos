@@ -2,8 +2,12 @@ package flini
 
 import (
 	"bufio"
+	"bytes"
+	"fmt"
 	"io"
 	"os"
+	"reflect"
+	"strconv"
 
 	"strings"
 
@@ -15,24 +19,72 @@ type File struct {
 }
 
 type Section struct {
-	Name   string
-	Values map[string][]interface{}
+	Name     string
+	Settings map[string]Settings
 }
 
-func ParseFile(path string) (File, error) {
+type Settings []Values
+
+func (s Settings) V() Values {
+	if len(s) > 0 {
+		return s[0]
+	}
+	return Values{}
+}
+
+type Values []interface{}
+
+func (v Values) String(pos int) string {
+	val := v[pos]
+	switch val := val.(type) {
+	case string:
+		return val
+	case int:
+		return strconv.Itoa(val)
+	case float32:
+		return fmt.Sprint(val)
+	default:
+		panic(fmt.Sprintf("Unknown var type %v", reflect.TypeOf(val).String()))
+	}
+}
+
+func (v Values) Float(pos int) (float32, error) {
+	if pos >= len(v) {
+		return 0, errors.Errorf("No such item at pos %v", pos)
+	}
+	if pos, ok := v[pos].(float32); ok {
+		return pos, nil
+	}
+	return 0, errors.Errorf("Item at %v is not float32, %v", pos, reflect.TypeOf(v[pos]).String())
+}
+
+func ParseFile(path string) (*File, error) {
 	stream, err := os.Open(path)
 	if err != nil {
-		return File{}, errors.Wrap(err, "couldn't open the INI")
+		return nil, errors.Wrap(err, "couldn't open the INI")
 	}
 	return Parse(stream)
 }
 
-func Parse(r io.Reader) (File, error) {
+func Parse(r io.ReadSeeker) (*File, error) {
+	hdr := make([]byte, 4)
+	_, err := r.Read(hdr)
+	if err != nil {
+		return nil, errors.Wrap(err, "couldn't read file header")
+	}
+	r.Seek(0, io.SeekStart)
+	if bytes.Compare(hdr, biniHeader) == 0 {
+		return ParseBINI(r)
+	}
+	return ParseINI(r)
+}
+
+func ParseINI(r io.Reader) (*File, error) {
 	reader := bufio.NewReader(r)
 
-	ret := File{Sections: map[string][]Section{}}
+	ret := &File{Sections: map[string][]Section{}}
 
-	curSection := &Section{Values: map[string][]interface{}{}}
+	curSection := &Section{Settings: map[string]Settings{}}
 
 	lineNum := -1
 	for {
@@ -42,7 +94,7 @@ func Parse(r io.Reader) (File, error) {
 			break
 		}
 		if err != nil {
-			return File{}, errors.Wrapf(err, "Error on line %v", lineNum)
+			return nil, errors.Wrapf(err, "Error on line %v", lineNum)
 		}
 		commentIdx := strings.Index(line, ";")
 
@@ -66,7 +118,7 @@ func Parse(r io.Reader) (File, error) {
 			if curSection != nil && curSection.Name != "" {
 				ret.Sections[curSection.Name] = append(ret.Sections[curSection.Name], *curSection)
 			}
-			curSection = &Section{Values: map[string][]interface{}{}, Name: line[1 : len(line)-1]}
+			curSection = &Section{Settings: map[string]Settings{}, Name: line[1 : len(line)-1]}
 			continue
 		}
 
@@ -83,7 +135,37 @@ func Parse(r io.Reader) (File, error) {
 		fieldName = strings.Trim(fieldName, "\r \t\n")
 		fieldValue := fields[1]
 		fieldValue = strings.Trim(fieldValue, "\r \t\n")
-		curSection.Values[fieldName] = append(curSection.Values[fieldName], fieldValue)
+		curSection.Settings[fieldName] = append(curSection.Settings[fieldName], valuesFromSetting(fieldValue))
 	}
 	return ret, nil
+}
+
+func valuesFromSetting(str string) []interface{} {
+	vals := strings.Split(str, ",")
+	ret := make([]interface{}, 0, len(vals))
+
+	for _, val := range vals {
+		val = strings.Trim(val, " \t\n\r")
+		if val[0] == '"' {
+			// We see ""s, this is a string
+			val = strings.Trim(val, `"`)
+			ret = append(ret, val)
+			continue
+		}
+		if strings.Index(val, ".") != -1 {
+			// float
+			f, err := strconv.ParseFloat(val, 32)
+			if err == nil {
+				ret = append(ret, float32(f))
+				continue
+			}
+		}
+
+		if i, err := strconv.Atoi(val); err == nil {
+			ret = append(ret, int(i))
+			continue
+		}
+		ret = append(ret, val)
+	}
+	return ret
 }

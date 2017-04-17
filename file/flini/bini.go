@@ -2,7 +2,6 @@ package flini
 
 import (
 	"bytes"
-	"os"
 
 	"encoding/binary"
 
@@ -13,17 +12,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-func ParseBINI(path string) (*File, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, errors.Wrap(err, "couldn't open the file")
-	}
-	b, err := ioutil.ReadAll(file)
+func ParseBINI(r io.Reader) (*File, error) {
+	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't slurp BINI file")
 	}
 	return parseBINI(bytes.NewReader(b))
 }
+
 func parseBINI(r *bytes.Reader) (*File, error) {
 	header := make([]byte, 4)
 	_, err := r.Read(header)
@@ -86,8 +82,8 @@ func parseBINI(r *bytes.Reader) (*File, error) {
 		}
 
 		curSection := Section{
-			Name:   name,
-			Values: map[string][]interface{}{},
+			Name:     name,
+			Settings: map[string]Settings{},
 		}
 
 		for i := 0; i < int(entryCount); i++ {
@@ -95,7 +91,7 @@ func parseBINI(r *bytes.Reader) (*File, error) {
 			if err != nil {
 				return nil, errors.Wrapf(err, "parsing section %v", curSection.Name)
 			}
-			curSection.Values[entName] = entVals
+			curSection.Settings[entName] = append(curSection.Settings[entName], Values(entVals))
 		}
 
 		pos, _ = r.Seek(0, io.SeekCurrent)
